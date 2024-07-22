@@ -10,6 +10,8 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
+var UsedMap = make(map[string]bool)
+
 func init() {
 	// V2 API
 	registerRoute("push", func(router fiber.Router) {
@@ -70,7 +72,7 @@ func routeDoPushV2(c *fiber.Ctx) error {
 		return c.Status(400).JSON(failed(400, "request bind failed: %v", err))
 	}
 	// parse query args (medium priority)
-	c.Request().URI().QueryArgs().VisitAll(func(key, value []byte){
+	c.Request().URI().QueryArgs().VisitAll(func(key, value []byte) {
 		params[strings.ToLower(string(key))] = string(value)
 	})
 	return push(c, params)
@@ -97,6 +99,11 @@ func push(c *fiber.Ctx, params map[string]interface{}) error {
 				msg.Title = val
 			case "body":
 				msg.Body = val
+				if _, ok := UsedMap[val]; ok {
+					return c.Status(400).JSON(failed(400, "body is duplicated"))
+				} else {
+					UsedMap[val] = true
+				}
 			case "sound":
 				// Compatible with old parameters
 				if strings.HasSuffix(val, ".caf") {
